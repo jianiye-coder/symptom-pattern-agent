@@ -1,0 +1,29 @@
+{
+  "note": "Held-out synthetic logs written AFTER the rule-based parser was frozen, with deliberately varied phrasing. The parser was not tuned on these. Gold labels are hand-written.",
+  "cases": [
+    {"id": "h01", "text": "Absolutely wiped out, energy maybe a 2 out of 10 so fatigue ~8. Head pounding. Slept from 1am to 7am. Walked the dog twice.",
+     "gold": {"symptoms": {"fatigue": 8, "headache": 7}, "sleep_hours": 6, "exertion": 5, "foods": [], "meds": []}},
+    {"id": "h02", "text": "had a glass of merlot at the party, danced for 2 hours. today: migraine 7, fog 6. ~6h sleep.",
+     "gold": {"symptoms": {"headache": 7, "brain_fog": 6}, "sleep_hours": 6, "exertion": 8, "foods": ["red wine"], "meds": []}},
+    {"id": "h03", "text": "Fatigue six out of ten. Pain four out of ten. Seven and a half hours sleep. Nothing much, read a book.",
+     "gold": {"symptoms": {"fatigue": 6, "pain": 4}, "sleep_hours": 7.5, "exertion": 1, "foods": [], "meds": []}},
+    {"id": "h04", "text": "knackered (7). slept badly, maybe 4h. ate a sandwich and crisps. took 400mg mag glycinate.",
+     "gold": {"symptoms": {"fatigue": 7}, "sleep_hours": 4, "exertion": null, "foods": ["sandwich", "crisps"], "meds": ["magnesium"]}},
+    {"id": "h05", "text": "Brainfog really bad today, like 8. Tiredness 5. Did a 30 min Zoom and that was it. Coffee, toast.",
+     "gold": {"symptoms": {"brain_fog": 8, "fatigue": 5}, "sleep_hours": null, "exertion": 2, "foods": ["coffee", "toast"], "meds": []}},
+    {"id": "h06", "text": "Slept 9h!! Felt almost normal: fatigue 2, no fog, no pain. Gardening for an hour. Salad & salmon.",
+     "gold": {"symptoms": {"fatigue": 2, "brain_fog": 0, "pain": 0}, "sleep_hours": 9, "exertion": 6, "foods": ["salad", "salmon"], "meds": []}},
+    {"id": "h07", "text": "PEM crash from Tuesday's shopping trip. fatigue 9, aches 7, nauseous (4). in bed. electrolyte drink, crackers.",
+     "gold": {"symptoms": {"fatigue": 9, "pain": 7, "nausea": 4}, "sleep_hours": null, "exertion": 1, "foods": ["crackers"], "meds": ["electrolytes"]}},
+    {"id": "h08", "text": "headache 6 after staring at screens. 11,000 steps commuting. vit D. pasta bake.",
+     "gold": {"symptoms": {"headache": 6}, "sleep_hours": null, "exertion": 7, "foods": ["pasta"], "meds": ["vitamin d"]}},
+    {"id": "h09", "text": "fatigue 5/10 brain fog 4/10 headache 3/10 sleep 6.5 exertion 3/10 food: rice, eggs meds: none",
+     "gold": {"symptoms": {"fatigue": 5, "brain_fog": 4, "headache": 3}, "sleep_hours": 6.5, "exertion": 3, "foods": ["rice", "eggs"], "meds": []}},
+    {"id": "h10", "text": "Dizzy spells on standing (5/10). Fatigue 6. Five hours sleep. Cleaned bathroom. Lots of water and salt tabs.",
+     "gold": {"symptoms": {"dizziness": 5, "fatigue": 6}, "sleep_hours": 5, "exertion": 6, "foods": [], "meds": ["electrolytes"]}},
+    {"id": "h11", "text": "so tired. like 7. fog 6. slept ten hrs and still exhausted. ordered pizza. melatonin + magnesium.",
+     "gold": {"symptoms": {"fatigue": 7, "brain_fog": 6}, "sleep_hours": 10, "exertion": null, "foods": ["pizza"], "meds": ["melatonin", "magnesium"]}},
+    {"id": "h12", "text": "joint pain flared to 8 after yoga class, otherwise ok (fatigue 3). 8 hrs sleep. oatmeal, chicken soup, dark chocolate.",
+     "gold": {"symptoms": {"pain": 8, "fatigue": 3}, "sleep_hours": 8, "exertion": 6, "foods": ["oatmeal", "chicken", "soup", "chocolate"], "meds": []}}
+  ]
+}

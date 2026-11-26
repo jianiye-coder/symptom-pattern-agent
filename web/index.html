@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Symptom Pattern Agent</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Symptom Pattern Agent</h1>
+      <p class="sub">Finds patterns in <em>your own</em> log. Numbers come from code, not the model.</p>
+    </div>
+    <div class="demo">
+      <label for="persona">Synthetic demo user</label>
+      <select id="persona"></select>
+      <button id="load" class="ghost">Load</button>
+      <span id="mode" class="pill"></span>
+    </div>
+  </header>
+  <div class="disclaimer">Not medical advice. Demo uses synthetic data only. If you have urgent symptoms, contact emergency services.</div>
+
+  <main>
+    <section class="card" id="log-card">
+      <h2>Log today</h2>
+      <textarea id="log-text" rows="5" placeholder="e.g. fatigue 7/10, brain fog 5. slept 5.5 hours. busy day, lots of walking. coffee, pasta. took magnesium."></textarea>
+      <div class="row">
+        <input type="date" id="log-date" />
+        <button id="log-btn">Parse &amp; save</button>
+      </div>
+      <div id="log-result" class="muted small"></div>
+
+      <h2 class="mt">Memory <span class="muted small">facts about you</span></h2>
+      <ul id="facts" class="facts"></ul>
+      <details class="small">
+        <summary>Memory history</summary>
+        <ul id="events" class="events"></ul>
+      </details>
+    </section>
+
+    <section class="card" id="chat-card">
+      <h2>Ask</h2>
+      <div id="suggestions" class="suggestions">
+        <button>What tends to come before my bad days?</button>
+        <button>For me a bad day is when brain fog is 6 or more</button>
+        <button>Did magnesium help my fatigue?</button>
+        <button>Does red wine trigger my headaches?</button>
+        <button>Should I stop taking my meds?</button>
+      </div>
+      <div id="messages" class="messages"></div>
+      <form id="chat-form" class="row">
+        <input id="chat-input" autocomplete="off" placeholder="Ask about your patterns..." />
+        <button type="submit">Send</button>
+      </form>
+    </section>
+
+    <section class="card" id="chart-card">
+      <h2>Timeline <span id="chart-sub" class="muted small"></span></h2>
+      <div id="chart"></div>
+      <div class="legend small">
+        <span><i class="sw line"></i>severity</span>
+        <span><i class="sw bar"></i>exertion</span>
+        <span><i class="sw flare"></i>flare day</span>
+        <span id="legend-exp" hidden><i class="sw exp"></i><b id="legend-exp-label"></b></span>
+      </div>
+      <p class="muted small" id="chart-note">Ask a pattern question to highlight what the agent found.</p>
+    </section>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>

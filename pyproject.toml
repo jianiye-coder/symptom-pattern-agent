@@ -1,0 +1,17 @@
+[project]
+name = "symptom-pattern-agent"
+version = "0.1.0"
+description = "A personal symptom-pattern agent with persistent memory, a tool-calling harness and an offline eval suite. Synthetic data only; not medical advice."
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = ["fastapi>=0.110", "uvicorn>=0.29", "pydantic>=2.6", "httpx>=0.27"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.setuptools]
+packages = ["spa", "evals"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]

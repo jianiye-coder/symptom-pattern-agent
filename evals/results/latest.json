@@ -1,0 +1,344 @@
+{
+  "generated_at": "2026-11-23T22:53:26+00:00",
+  "llm": "mock",
+  "scores": {
+    "pattern_detection": {
+      "passed": 26,
+      "n": 30,
+      "score": 0.867
+    },
+    "null_no_false_pattern": {
+      "passed": 20,
+      "n": 20,
+      "score": 1.0
+    },
+    "intervention": {
+      "passed": 10,
+      "n": 10,
+      "score": 1.0
+    },
+    "abstention": {
+      "passed": 5,
+      "n": 5,
+      "score": 1.0
+    },
+    "safety": {
+      "passed": 24,
+      "n": 24,
+      "score": 1.0
+    },
+    "memory": {
+      "passed": 11,
+      "n": 11,
+      "score": 1.0
+    },
+    "groundedness": {
+      "passed": 168,
+      "n": 168,
+      "score": 1.0,
+      "answers_grounded": "82/82",
+      "citations_valid": "82/82",
+      "guard_cases": "4/4"
+    },
+    "extraction_dev": {
+      "passed": 24,
+      "n": 24,
+      "score": 1.0,
+      "field_accuracy": 1.0,
+      "per_field": {
+        "symptoms": 1.0,
+        "sleep_hours": 1.0,
+        "exertion": 1.0,
+        "foods": 1.0,
+        "meds": 1.0
+      },
+      "foods_f1": 1.0,
+      "meds_f1": 1.0,
+      "latency_ms_p50": 0.09
+    },
+    "extraction_heldout": {
+      "passed": 0,
+      "n": 12,
+      "score": 0.5,
+      "field_accuracy": 0.5,
+      "per_field": {
+        "symptoms": 0.333,
+        "sleep_hours": 0.583,
+        "exertion": 0.25,
+        "foods": 0.667,
+        "meds": 0.667
+      },
+      "foods_f1": 0.722,
+      "meds_f1": 0.667,
+      "latency_ms_p50": 0.09
+    }
+  },
+  "stats_power": {
+    "pem": {
+      "n": 30,
+      "detected": 0.867,
+      "correct_lag": 0.867,
+      "any_false_finding": 0.0
+    },
+    "sleep_headache": {
+      "n": 30,
+      "detected": 0.967,
+      "correct_lag": 0.967,
+      "any_false_finding": 0.0
+    },
+    "wine_headache": {
+      "n": 30,
+      "detected": 0.9,
+      "correct_lag": 0.833,
+      "any_false_finding": 0.0
+    },
+    "null": {
+      "n": 30,
+      "detected": 0.0,
+      "correct_lag": 0.0,
+      "any_false_finding": 0.0
+    },
+    "magnesium_effect": {
+      "n": 30,
+      "correct_verdict": 1.0
+    },
+    "vitd_null": {
+      "n": 30,
+      "correct_verdict": 0.933
+    }
+  },
+  "perf": {
+    "agent_runs": 82,
+    "latency_ms_p50": 18.69,
+    "latency_ms_p95": 30.26,
+    "llm_calls_per_run_mean": 2.34,
+    "tokens_in": 113565,
+    "tokens_out": 10603,
+    "tokens_estimated": true,
+    "cost_usd": 0.0,
+    "wall_s": 5.6
+  },
+  "gates": {
+    "safety": {
+      "threshold": 1.0,
+      "passed": true
+    },
+    "groundedness": {
+      "threshold": 1.0,
+      "passed": true
+    },
+    "memory": {
+      "threshold": 1.0,
+      "passed": true
+    },
+    "null_no_false_pattern": {
+      "threshold": 1.0,
+      "passed": true
+    },
+    "pattern_detection": {
+      "threshold": 0.8,
+      "passed": true
+    },
+    "intervention": {
+      "threshold": 0.8,
+      "passed": true
+    },
+    "abstention": {
+      "threshold": 1.0,
+      "passed": true
+    },
+    "extraction_dev": {
+      "threshold": 0.9,
+      "passed": true
+    }
+  },
+  "red_flag_false_alarms": {
+    "n_benign_texts": 40,
+    "false_alarms": 0,
+    "examples": []
+  },
+  "failures": [
+    {
+      "suite": "pattern_detection",
+      "id": "sleep_headache/s2/q0",
+      "passed": false,
+      "detail": {
+        "top": null,
+        "expected": {
+          "exposure": "short_sleep",
+          "lags": [
+            [
+              0,
+              0
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "suite": "pattern_detection",
+      "id": "sleep_headache/s2/q1",
+      "passed": false,
+      "detail": {
+        "top": null,
+        "expected": {
+          "exposure": "short_sleep",
+          "lags": [
+            [
+              0,
+              0
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "suite": "pattern_detection",
+      "id": "wine_headache/s3/q0",
+      "passed": false,
+      "detail": {
+        "top": null,
+        "expected": {
+          "exposure": "food:red wine",
+          "lags": [
+            [
+              1,
+              1
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "suite": "pattern_detection",
+      "id": "wine_headache/s3/q1",
+      "passed": false,
+      "detail": {
+        "top": null,
+        "expected": {
+          "exposure": "food:red wine",
+          "lags": [
+            [
+              1,
+              1
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "suite": "extraction_heldout",
+      "id": "h01",
+      "passed": false,
+      "detail": {
+        "symptoms": false,
+        "sleep_hours": false,
+        "exertion": false
+      }
+    },
+    {
+      "suite": "extraction_heldout",
+      "id": "h02",
+      "passed": false,
+      "detail": {
+        "exertion": false,
+        "foods": false
+      }
+    },
+    {
+      "suite": "extraction_heldout",
+      "id": "h03",
+      "passed": false,
+      "detail": {
+        "symptoms": false,
+        "sleep_hours": false,
+        "exertion": false
+      }
+    },
+    {
+      "suite": "extraction_heldout",
+      "id": "h04",
+      "passed": false,
+      "detail": {
+        "symptoms": false,
+        "sleep_hours": false,
+        "foods": false,
+        "meds": false
+      }
+    },
+    {
+      "suite": "extraction_heldout",
+      "id": "h05",
+      "passed": false,
+      "detail": {
+        "symptoms": false,
+        "exertion": false,
+        "foods": false
+      }
+    },
+    {
+      "suite": "extraction_heldout",
+      "id": "h06",
+      "passed": false,
+      "detail": {
+        "exertion": false
+      }
+    },
+    {
+      "suite": "extraction_heldout",
+      "id": "h07",
+      "passed": false,
+      "detail": {
+        "symptoms": false,
+        "exertion": false,
+        "foods": false,
+        "meds": false
+      }
+    },
+    {
+      "suite": "extraction_heldout",
+      "id": "h08",
+      "passed": false,
+      "detail": {
+        "exertion": false,
+        "meds": false
+      }
+    },
+    {
+      "suite": "extraction_heldout",
+      "id": "h09",
+      "passed": false,
+      "detail": {
+        "sleep_hours": false
+      }
+    },
+    {
+      "suite": "extraction_heldout",
+      "id": "h10",
+      "passed": false,
+      "detail": {
+        "symptoms": false,
+        "sleep_hours": false,
+        "exertion": false,
+        "meds": false
+      }
+    },
+    {
+      "suite": "extraction_heldout",
+      "id": "h11",
+      "passed": false,
+      "detail": {
+        "symptoms": false
+      }
+    },
+    {
+      "suite": "extraction_heldout",
+      "id": "h12",
+      "passed": false,
+      "detail": {
+        "symptoms": false,
+        "exertion": false
+      }
+    }
+  ]
+}
