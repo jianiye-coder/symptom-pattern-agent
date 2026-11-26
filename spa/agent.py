@@ -26,6 +26,12 @@ SYSTEM_PROMPT = """You are a personal symptom-pattern assistant for someone livi
 
 Rules:
 - Never compute statistics yourself. Call a tool and report ONLY numbers and dates that appear in tool outputs.
+- Write numbers as placeholders, not digits. Every tool result has a "_ref" (T1, T2, ...). Write
+  {{T1.findings.0.rate_exposed_pct}} and the system fills in the value; list items are numbered from 0.
+  Filters: |pct turns a proportion into a percent (0.31 -> 31), |r1 / |r2 round. Example:
+  "a flare followed {{T1.findings.0.flares_after_exposed}} of {{T1.findings.0.n_exposed}} high-exertion days
+  ({{T1.findings.0.rate_exposed_pct}}%)". A typed digit must exactly match a computed value; raw log values
+  (from get_entries) can only be quoted through a placeholder.
 - Cite the specific dates (YYYY-MM-DD) from tool outputs that support what you say.
 - If a tool says insufficient_data or no_pattern, say so plainly. "Not enough data" is a good answer.
 - Never diagnose. Never recommend starting, stopping or changing any medication or dose; refer to their clinician.
@@ -295,6 +301,7 @@ class Agent:
                "results_by_call": {}}
         trace: list[TraceStep] = []
         results: list[tuple[str, Any]] = []
+        refs: dict[str, Any] = {}  # slot name -> tool result, for {{T1.path}} placeholders
         usage = Usage(estimated=getattr(self.llm, "name", "") == "mock")
         llm_calls = 0
         answer: Optional[str] = None
@@ -333,34 +340,41 @@ class Agent:
                                        latency_ms=round((time.perf_counter() - ts) * 1000, 2)))
                 results.append((tc.name, res))
                 ctx["results_by_call"][tc.id] = (tc.name, res)
-                messages.append({"role": "tool", "tool_call_id": tc.id, "content": json.dumps(res, default=str)})
+                ref = f"T{len(results)}"
+                refs[ref] = res
+                shown = {"_ref": ref, **res} if isinstance(res, dict) else {"_ref": ref, "result": res}
+                messages.append({"role": "tool", "tool_call_id": tc.id, "content": json.dumps(shown, default=str)})
+        flags_out: list[str] = []
         if answer is None:
+            flags_out.append("step_budget_exhausted")
             answer = render_all(results)  # step budget exhausted: fall back to deterministic rendering
 
         # ---- groundedness: numbers/dates must come from tools (or the user / memory)
         tool_outputs = [r for _, r in results]
         extra = [question, self.memory_block(user_id)]
-        g = grounding.check(answer, tool_outputs, extra)
-        flags_out: list[str] = []
-        drafts = [answer]
+        g = grounding.check(answer, tool_outputs, extra, refs)
+        drafts = [g["answer"]]
         if not g["grounded"]:
             flags_out.append("ungrounded_first_draft")
             messages.append({"role": "assistant", "content": answer})
             messages.append({"role": "user", "content": (
-                "SYSTEM CHECK: your answer contains numbers or dates that do not appear in any tool output: "
-                f"{g['ungrounded_numbers'] + g['ungrounded_dates']}. Rewrite it using only values from tool outputs."
+                "SYSTEM CHECK: your answer contains numbers, dates or placeholders that do not match any tool "
+                f"output: {g['ungrounded_numbers'] + g['ungrounded_dates']}. Rewrite it using placeholders like "
+                "{{T1.field}} for every number, pointing at fields that exist."
             )})
             # keep tools in the request (some servers reject tool history without them); ignore any calls
             answer = call_llm(messages, schemas).content or ""
-            drafts.append(answer)
-            g = grounding.check(answer, tool_outputs, extra)
+            g = grounding.check(answer, tool_outputs, extra, refs)
+            drafts.append(g["answer"])
             if not g["grounded"]:
                 flags_out.append("replaced_with_deterministic_rendering")
-                answer = render_all(results)
-                g = grounding.check(answer, tool_outputs, extra)
+                g = grounding.check(render_all(results), tool_outputs, extra, refs)
+        answer = g["answer"]
+        bindings = g["bindings"]
 
         # ---- safety (checked on every draft the model produced, and on the final text)
         if any(safety.unsafe_spans(d) for d in drafts + [answer]):
+            bindings = []
             flags_out.append("blocked_unsafe_output")
             answer = safety.MED_POLICY + "\n\n" + render_all(
                 [(n, r) for n, r in results if n in ("compare_before_after", "data_summary", "find_flare_precursors")]
@@ -380,7 +394,7 @@ class Agent:
         return AgentResult(
             answer=answer, citations=citations, trace=trace, safety_flags=flags_out, grounded=g["grounded"],
             ungrounded_numbers=g["ungrounded_numbers"] + g["ungrounded_dates"], llm_calls=llm_calls,
-            usage=usage, latency_ms=latency, run_id=run_id,
+            usage=usage, latency_ms=latency, run_id=run_id, bindings=bindings,
         )
 
 

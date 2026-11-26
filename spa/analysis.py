@@ -2,8 +2,21 @@
 
 Pure Python (no numpy) so the statistics are easy to read and audit:
   * lagged association: P(flare on day t+lag | exposure on day t) vs P(flare | no exposure),
-    one-sided Fisher exact test, Bonferroni correction across every (exposure, lag) tested,
-    bootstrap 95% CI for the risk difference.
+    one-sided Fisher exact test per (exposure, lag window), then a multiple-comparison step
+    chosen by METHOD:
+      - "bonferroni": p x number of tests (the original method; conservative, assumes nothing),
+      - "bh": Benjamini-Hochberg false-discovery-rate control (more power, but still treats
+        days as independent),
+      - "maxt": circular-shift permutation with a max-statistic (Westfall-Young) adjustment.
+        Each exposure series is rotated against the outcome series by k days, which breaks any
+        real link but keeps each series' own run structure (busy weeks, multi-day crashes).
+        The adjusted p is the share of rotations whose *best* test beats the observed one, so it
+        handles both multiplicity and day-to-day autocorrelation.
+    Bonferroni stays the default: in evals/power.py maxT finds a few more planted patterns, but its
+    false-finding rate sits near the nominal 5% where Bonferroni's is ~0-4%, and for this product a
+    false pattern costs more than a missed one. maxT also needs ~5 weeks of rows before any result
+    can reach p < 0.05 (the smallest possible p is 1 / (rotations + 1)).
+    Bootstrap 95% CI for the risk difference.
   * before/after comparison for an intervention, bootstrap CI for the difference in means.
 These are screening heuristics on observational self-tracking data, not causal estimates.
 """
@@ -27,6 +40,9 @@ ALPHA = 0.05
 HIGH_EXERTION = 7
 SHORT_SLEEP = 6.0
 DEFAULT_FLARE = {"symptom": None, "threshold": 7}
+METHODS = ("bonferroni", "bh", "maxt")
+METHOD = "bonferroni"
+SHIFT_MARGIN = 7  # rotations closer than this to 0 (mod N) are excluded: they would keep real lags aligned
 
 EXPOSURE_LABELS = {
     "high_exertion": f"high exertion (>= {HIGH_EXERTION}/10)",
@@ -123,6 +139,26 @@ def resolve_exposure(query: str, available: list[str]) -> Optional[str]:
     # partial name ('wine' -> food:red wine) only if it is unambiguous
     partial = [a for a in available if qw and qw <= _words(a.split(":")[-1])]
     return partial[0] if len(partial) == 1 else None
+
+
+_LOGF = [0.0]
+
+
+def _logfact(n: int) -> float:
+    while len(_LOGF) <= n:
+        _LOGF.append(_LOGF[-1] + math.log(len(_LOGF)))
+    return _LOGF[n]
+
+
+def _fisher_fast(a: int, b: int, c: int, d: int) -> float:
+    """Same as fisher_one_sided, via log-factorials (used inside the permutation loop)."""
+    n1, n2, k = a + b, c + d, a + c
+    n = n1 + n2
+    base = _logfact(n1) + _logfact(n2) + _logfact(k) + _logfact(n - k) - _logfact(n)
+    p = 0.0
+    for x in range(a, min(n1, k) + 1):
+        p += math.exp(base - _logfact(x) - _logfact(n1 - x) - _logfact(k - x) - _logfact(n2 - k + x))
+    return min(1.0, p)
 
 
 def fisher_one_sided(a: int, b: int, c: int, d: int) -> float:
@@ -232,15 +268,73 @@ def sufficiency(entries: list[Entry], flare_def: Optional[dict] = None) -> dict[
 
 
 # ----------------------------------------------------------------------------- tools
+def _bh(ps: list[float]) -> list[float]:
+    """Benjamini-Hochberg adjusted p-values (step-up), in input order."""
+    m = len(ps)
+    order = sorted(range(m), key=lambda i: ps[i])
+    adj = [1.0] * m
+    running = 1.0
+    for rank in range(m, 0, -1):
+        i = order[rank - 1]
+        running = min(running, ps[i] * m / rank)
+        adj[i] = min(1.0, running)
+    return adj
+
+
+def _maxt_null(tests: list[tuple[str, dict]]) -> list[float]:
+    """Null distribution of the best test under circular shifts.
+
+    Each test's rows (outcome days with a known exposure window, in date order) keep their outcome and
+    are paired with the exposure value k rows later, wrapping around. This keeps the row set, the number
+    of exposed days and the number of flare days fixed, keeps each series' runs intact, and destroys any
+    real alignment. For every allowed k we record the smallest p-value among tests that would also pass
+    the effect-size rules a real finding needs. (Rotating over calendar days instead would misalign the
+    days missing from the log and shrink the null tables, which makes the test too lenient.)"""
+    prepared = []
+    for _, t in tests:
+        rows = sorted(t["_rows"])
+        xs = [x for _, x, _f, _h in rows]
+        fs = [f for _, _x, f, _h in rows]
+        n_e, n_f, n = sum(xs), sum(fs), len(rows)
+        if n_e < MIN_EXPOSED or n - n_e < 4:
+            continue
+        # marginals are fixed under rotation, so p depends only on a = exposed & flare
+        pa = {}
+        for a in range(max(0, n_f - (n - n_e)), min(n_e, n_f) + 1):
+            b, c = n_e - a, n_f - a
+            d = n - n_e - c
+            ok = a / n_e - c / (n - n_e) >= MIN_RISK_DIFF
+            pa[a] = _fisher_fast(a, b, c, d) if ok else 1.0
+        prepared.append((xs, fs, n, pa))
+    if not prepared:
+        return []
+    n_min = min(n for _, _, n, _ in prepared)
+    minima = []
+    for k in range(SHIFT_MARGIN, n_min - SHIFT_MARGIN + 1):
+        best = 1.0
+        for xs, fs, n, pa in prepared:
+            a = sum(1 for i in range(n) if fs[i] and xs[(i + k) % n])
+            if pa[a] < best:
+                best = pa[a]
+        minima.append(best)
+    return minima
+
+
 def find_flare_precursors(
     entries: list[Entry],
     flare_def: Optional[dict] = None,
     max_lag: int = 3,
     ignore: Optional[list[str]] = None,
     only: Optional[list[str]] = None,
-    correction_m: Optional[int] = None,
+    method: Optional[str] = None,
 ) -> dict[str, Any]:
-    """Scan every candidate exposure at lags 0..max_lag for association with later flare days."""
+    """Scan every candidate exposure at lags 0..max_lag for association with later flare days.
+
+    `only` restricts which exposures are *reported*; the multiple-comparison adjustment always covers the
+    full scan, so testing exposures one at a time can't dodge it."""
+    method = method or METHOD
+    if method not in METHODS:
+        raise ValueError(f"unknown method {method}")
     fd = flare_def or DEFAULT_FLARE
     suff = sufficiency(entries, fd)
     base = {
@@ -252,8 +346,6 @@ def find_flare_precursors(
         return base | {"status": "insufficient_data", "problems": suff["problems"], "findings": []}
     out = outcome_series(entries, fd)
     exps = exposure_series(entries, ignore)
-    if only:
-        exps = {k: v for k, v in exps.items() if k in only}
     tests: list[tuple[str, dict]] = []
     for name, ser in exps.items():
         for lo, hi in LAG_WINDOWS:
@@ -262,15 +354,25 @@ def find_flare_precursors(
             t = _test(ser, out, lo, hi)
             if t is not None:
                 tests.append((name, t))
-    # correction_m lets a single-exposure test be corrected for the full scan it is part of
-    m = max(1, len(tests), correction_m or 0)
+    m = max(1, len(tests))
+    n_shifts = None
+    if method == "bonferroni":
+        adj = [min(1.0, t["p_value"] * m) for _, t in tests]
+    elif method == "bh":
+        adj = _bh([t["p_value"] for _, t in tests])
+    else:
+        null = _maxt_null(tests)
+        n_shifts = len(null)
+        adj = [(1 + sum(1 for q in null if q <= t["p_value"] + 1e-12)) / (1 + n_shifts) for _, t in tests]
     by_exp: dict[str, list[dict]] = {}
-    for name, t in tests:
-        t["p_adjusted"] = min(1.0, t["p_value"] * m)
+    for (name, t), pa in zip(tests, adj):
+        t["p_adjusted"] = pa
         t["significant"] = (
             t["p_adjusted"] < ALPHA and t["risk_difference"] >= MIN_RISK_DIFF and t["n_exposed"] >= MIN_EXPOSED
         )
         by_exp.setdefault(name, []).append(t)
+    if only:
+        by_exp = {k: v for k, v in by_exp.items() if k in only}
 
     findings, weak = [], []
     for name, ts in by_exp.items():
@@ -303,11 +405,21 @@ def find_flare_precursors(
         item["ci95_risk_difference"] = list(bootstrap_rd_ci(pairs, seed=len(pairs)))
     for item in weak:
         item.pop("_pairs", None)
-    warnings = [
-        f"{m} exposure/lag combinations were tested; p-values are Bonferroni-adjusted.",
-        "Observational self-tracking data: associations are not proof of cause.",
-        "Consecutive days are correlated, so p-values are approximate (likely optimistic).",
-    ]
+    if method == "maxt":
+        warnings = [
+            f"{m} exposure/lag combinations were tested. p-values are adjusted with a circular-shift permutation "
+            f"test ({n_shifts} rotations), which accounts for both the number of tests and runs of similar days.",
+        ]
+        if n_shifts is not None and 1 / (1 + n_shifts) >= ALPHA:
+            warnings.append(f"Only {n_shifts} rotations are possible with this much data, too few for any result "
+                            "to reach significance.")
+    elif method == "bh":
+        warnings = [f"{m} exposure/lag combinations were tested; p-values are Benjamini-Hochberg (FDR) adjusted.",
+                    "Consecutive days are correlated, so p-values are approximate (likely optimistic)."]
+    else:
+        warnings = [f"{m} exposure/lag combinations were tested; p-values are Bonferroni-adjusted.",
+                    "Consecutive days are correlated, so p-values are approximate (likely optimistic)."]
+    warnings.append("Observational self-tracking data: associations are not proof of cause.")
     if suff["n_days"] < 30:
         warnings.append(f"Small sample ({suff['n_days']} days): estimates are imprecise.")
     for f in findings:
@@ -316,6 +428,8 @@ def find_flare_precursors(
     return base | {
         "status": "pattern_found" if findings else "no_pattern",
         "tests_run": m,
+        "correction": method,
+        **({"permutation_rotations": n_shifts} if n_shifts is not None else {}),
         "ci_level_pct": 95,
         "p_display_floor": 0.001,
         "findings": findings,
@@ -324,18 +438,9 @@ def find_flare_precursors(
     }
 
 
-def count_tests(entries: list[Entry], flare_def: Optional[dict] = None, max_lag: int = 3) -> int:
-    out = outcome_series(entries, flare_def or DEFAULT_FLARE)
-    n = 0
-    for ser in exposure_series(entries).values():
-        for lo, hi in LAG_WINDOWS:
-            if hi <= max_lag and _test(ser, out, lo, hi) is not None:
-                n += 1
-    return n
-
-
 def test_association(
-    entries: list[Entry], exposure: str, flare_def: Optional[dict] = None, max_lag: int = 3
+    entries: list[Entry], exposure: str, flare_def: Optional[dict] = None, max_lag: int = 3,
+    method: Optional[str] = None,
 ) -> dict[str, Any]:
     exps = exposure_series(entries)
     key = resolve_exposure(exposure, list(exps))
@@ -345,9 +450,8 @@ def test_association(
             "query": exposure,
             "available_exposures": sorted(exps),
         }
-    # Correct for the full scan, so testing exposures one at a time can't dodge Bonferroni.
-    full_m = count_tests(entries, flare_def, max_lag)
-    res = find_flare_precursors(entries, flare_def, max_lag=max_lag, only=[key], correction_m=full_m)
+    # Adjusted for the full scan, so testing exposures one at a time can't dodge the correction.
+    res = find_flare_precursors(entries, flare_def, max_lag=max_lag, only=[key], method=method)
     res["exposure"] = key
     if res["status"] == "no_pattern" and res.get("strongest_non_significant"):
         res["result"] = res.pop("strongest_non_significant")
@@ -480,3 +584,79 @@ def chart_series(entries: list[Entry], symptom: Optional[str] = None, flare_def:
             }
         )
     return {"symptom": sym or "max symptom", "points": pts}
+
+
+# ----------------------------------------------------------------------------- logging progress & recent change
+# Mean detection rate of the three planted personas by calendar days of history (Bonferroni, 100 fresh seeds;
+# evals/results/power.md). Planted effects are large and clean, so this is an optimistic ceiling.
+POWER_GUIDE: list[tuple[int, float]] = [(21, 0.09), (30, 0.27), (45, 0.60), (60, 0.78), (90, 0.97), (120, 1.0)]
+
+
+def _guide(days: int) -> float:
+    if days <= POWER_GUIDE[0][0]:
+        return 0.0 if days < MIN_DAYS else POWER_GUIDE[0][1]
+    for (d0, p0), (d1, p1) in zip(POWER_GUIDE, POWER_GUIDE[1:]):
+        if days <= d1:
+            return round(p0 + (p1 - p0) * (days - d0) / (d1 - d0), 2)
+    return POWER_GUIDE[-1][1]
+
+
+def logging_progress(entries: list[Entry], today: Optional[dt.date] = None) -> dict[str, Any]:
+    """How much data there is, how regular it is, and roughly how likely a real pattern is to be found yet."""
+    today = today or dt.date.today()
+    if not entries:
+        return {"n_days": 0, "status": "empty", "next_milestone_days": POWER_GUIDE[2][0]}
+    dates = sorted(e.date for e in entries)
+    span = (dates[-1] - dates[0]).days + 1
+    gaps = [(b - a).days - 1 for a, b in zip(dates, dates[1:])]
+    recent = [d for d in dates if (dates[-1] - d).days < 14]
+    milestone = next((d for d in (45, 60, 90) if d > span), None)
+    return {
+        "status": "ok",
+        "n_days": len(dates),
+        "span_days": span,
+        "first_date": dates[0].isoformat(),
+        "last_date": dates[-1].isoformat(),
+        "days_since_last_entry": (today - dates[-1]).days,
+        "coverage_pct": _r(100 * len(dates) / span, 1),
+        "coverage_last_14_days_pct": _r(100 * len(recent) / min(14, span), 1),
+        "longest_gap_days": max(gaps, default=0),
+        "detection_chance_pct": round(100 * _guide(span)),
+        "next_milestone_days": milestone,
+        "detection_chance_at_milestone_pct": round(100 * _guide(milestone)) if milestone else None,
+        "note": "Detection chance is for a strong, clean pattern like the synthetic test cases; real effects are "
+                "usually weaker and need more days.",
+    }
+
+
+def recent_change(entries: list[Entry], symptom: Optional[str] = None, recent_days: int = 14,
+                  prior_days: int = 28, min_days_each: int = 7) -> dict[str, Any]:
+    """Last `recent_days` vs the `prior_days` before them, with a bootstrap CI. A change is only called when the
+    interval excludes 0 (unlike a fixed '0.3 points = worsening' rule)."""
+    sym = normalize_name(symptom) if symptom else None
+    if not entries:
+        return {"status": "insufficient_data", "problems": ["no entries"]}
+    end = max(e.date for e in entries)
+    cut = end - dt.timedelta(days=recent_days)
+    start = cut - dt.timedelta(days=prior_days)
+
+    def metric(e: Entry) -> Optional[float]:
+        if sym:
+            return float(e.symptoms[sym]) if sym in e.symptoms else None
+        return float(max(e.symptoms.values())) if e.symptoms else None
+
+    rec = [v for e in entries if e.date > cut and (v := metric(e)) is not None]
+    pri = [v for e in entries if start < e.date <= cut and (v := metric(e)) is not None]
+    base = {"metric": f"{sym} severity" if sym else "daily max symptom severity",
+            "recent_window": [(cut + dt.timedelta(days=1)).isoformat(), end.isoformat()],
+            "prior_window": [(start + dt.timedelta(days=1)).isoformat(), cut.isoformat()],
+            "n_recent": len(rec), "n_prior": len(pri)}
+    if len(rec) < min_days_each or len(pri) < min_days_each:
+        return base | {"status": "insufficient_data",
+                       "problems": [f"need >= {min_days_each} logged days in each window"]}
+    mr, mp = statistics.fmean(rec), statistics.fmean(pri)
+    lo, hi = bootstrap_mean_diff_ci(pri, rec, seed=len(pri) * 1000 + len(rec))
+    verdict = "higher_recently" if lo > 0 else "lower_recently" if hi < 0 else "no_clear_change"
+    return base | {"status": "ok", "mean_recent": _r(mr, 2), "mean_prior": _r(mp, 2), "difference": _r(mr - mp, 2),
+                   "ci95_difference": [lo, hi], "verdict": verdict,
+                   "warnings": ["Consecutive days are correlated, so the interval is approximate (likely too narrow)."]}

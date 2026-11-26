@@ -50,6 +50,13 @@ CREATE TABLE IF NOT EXISTS memory_events (
     detail TEXT NOT NULL,
     at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS flags (
+    user_id TEXT NOT NULL,
+    date TEXT NOT NULL,
+    note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, date)
+);
 CREATE TABLE IF NOT EXISTS runs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id TEXT NOT NULL,
@@ -117,9 +124,52 @@ class MemoryStore:
 
     def clear_user(self, user_id: str) -> None:
         with self._lock:
-            for t in ("entries", "facts", "memory_events", "runs"):
+            for t in ("entries", "facts", "memory_events", "runs", "flags"):
                 self._conn.execute(f"DELETE FROM {t} WHERE user_id=?", (user_id,))
             self._conn.commit()
+
+    # ------------------------------------------------------------------ flagged days
+    # Days the user marked as important to raise at their next appointment (with an optional note).
+    def set_flag(self, user_id: str, date: str, note: str = "") -> dict:
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO flags(user_id, date, note, created_at) VALUES (?,?,?,?) "
+                "ON CONFLICT(user_id, date) DO UPDATE SET note=excluded.note",
+                (user_id, date, note.strip()[:300], _now()),
+            )
+            self._conn.commit()
+        return {"date": date, "note": note.strip()[:300]}
+
+    def clear_flag(self, user_id: str, date: str) -> bool:
+        with self._lock:
+            cur = self._conn.execute("DELETE FROM flags WHERE user_id=? AND date=?", (user_id, date))
+            self._conn.commit()
+        return cur.rowcount > 0
+
+    def flags(self, user_id: str) -> list[dict]:
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT date, note FROM flags WHERE user_id=? ORDER BY date", (user_id,)
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def purge_inactive(self, older_than_hours: float) -> int:
+        """Delete every user whose last write (entry, run or fact) is older than the cutoff. Public demo only."""
+        cutoff = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=older_than_hours)).isoformat(timespec="seconds")
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT user_id, MAX(t) AS last FROM ("
+                " SELECT user_id, created_at AS t FROM entries UNION ALL"
+                " SELECT user_id, at AS t FROM runs UNION ALL"
+                " SELECT user_id, updated_at AS t FROM facts UNION ALL"
+                " SELECT user_id, created_at AS t FROM flags) GROUP BY user_id HAVING last < ?",
+                (cutoff,),
+            ).fetchall()
+            for r in rows:
+                for t in ("entries", "facts", "memory_events", "runs", "flags"):
+                    self._conn.execute(f"DELETE FROM {t} WHERE user_id=?", (r["user_id"],))
+            self._conn.commit()
+        return len(rows)
 
     # ------------------------------------------------------------------ semantic
     def _row_to_fact(self, r: sqlite3.Row) -> Fact:

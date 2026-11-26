@@ -1,10 +1,12 @@
 """Offline eval harness.
 
     python -m evals                 # mock LLM (default), deterministic, no API key
-    SPA_LLM_MODE=openai python -m evals   # same cases against a real OpenAI-compatible model
+    SPA_LLM_MODE=openai python -m evals --baseline   # real model + agent-vs-direct-ask comparison
     python -m evals --check         # exit 1 if any gate fails (used in CI)
+    python -m evals --quick         # 2 seeds per persona (cheap smoke run against a paid model)
+    python -m evals.matrix evals/models.json   # several models in one go, then a comparison table
 
-Writes evals/results/latest.json and evals/results/latest.md.
+Writes evals/results/<tag>.{json,md}. The tag is "latest" for the mock and the model name otherwise.
 """
 from __future__ import annotations
 
@@ -12,6 +14,7 @@ import argparse
 import datetime as dt
 import json
 import os
+import re
 import statistics
 import sys
 import tempfile
@@ -43,9 +46,25 @@ GATES = {
 }
 
 
+SEED_LIMIT: int | None = None  # --quick: use only the first N fixture seeds per persona
+
+
 def load_histories(persona: str) -> dict[str, list[Entry]]:
     doc = json.loads((FIX / "histories" / f"{persona}.json").read_text())
-    return {seed: [Entry.model_validate(e) for e in es] for seed, es in doc["histories"].items()}
+    items = list(doc["histories"].items())[: SEED_LIMIT or None]
+    return {seed: [Entry.model_validate(e) for e in es] for seed, es in items}
+
+
+# Words an answer may use to name each planted exposure (a real model won't copy the tool's label verbatim).
+EXPOSURE_WORDS = {
+    "high_exertion": ("exertion", "exercise", "activity", "active", "busy", "overdo"),
+    "short_sleep": ("sleep", "slept"),
+}
+
+
+def mentions_exposure(answer: str, exposure: str) -> bool:
+    words = EXPOSURE_WORDS.get(exposure) or (exposure.split(":", 1)[-1],)
+    return any(w in answer.lower() for w in words)
 
 
 class Recorder:
@@ -60,9 +79,18 @@ class Recorder:
         self.tokens_estimated = False
         self.grounded: list[bool] = []
         self.citations_valid: list[bool] = []
+        self.flags: list[list[str]] = []
+        self.tool_errors = 0
+        self.tool_calls = 0
+        self.tool_choice: list[bool] = []
 
-    def agent_run(self, agent: Agent, user: str, q: str):
+    def agent_run(self, agent: Agent, user: str, q: str, expect_tools: tuple[str, ...] = ()):
         r = agent.run(user, q)
+        self.flags.append(list(r.safety_flags))
+        self.tool_calls += len(r.trace)
+        self.tool_errors += sum(1 for t in r.trace if isinstance(t.result, dict) and t.result.get("tool_error"))
+        if expect_tools:
+            self.tool_choice.append(any(t.tool in expect_tools for t in r.trace))
         self.latencies.append(r.latency_ms)
         self.llm_calls.append(r.llm_calls)
         self.tokens_in += r.usage.prompt_tokens
@@ -96,6 +124,9 @@ def tool_result(r, name: str) -> dict | None:
 
 
 # ----------------------------------------------------------------------------- suites
+SCAN_TOOLS = ("find_flare_precursors", "test_association")
+
+
 def suite_pattern(llm, rec: Recorder, cases: dict) -> None:
     c = cases["pattern"]
     for persona in c["personas"]:
@@ -103,14 +134,14 @@ def suite_pattern(llm, rec: Recorder, cases: dict) -> None:
         for seed, entries in load_histories(persona).items():
             for qi, q in enumerate(c["questions"]):
                 agent = fresh_agent(llm, entries)
-                r = rec.agent_run(agent, "u", q)
-                res = tool_result(r, "find_flare_precursors") or {}
+                r = rec.agent_run(agent, "u", q, expect_tools=SCAN_TOOLS)
+                res = tool_result(r, "find_flare_precursors") or tool_result(r, "test_association") or {}
                 top = (res.get("findings") or [None])[0]
                 ok = bool(
                     top
                     and top["exposure"] == truth["exposure"]
                     and top["lag_days"] in truth["lags"]
-                    and analysis.exposure_label(truth["exposure"]) in r.answer
+                    and mentions_exposure(r.answer, truth["exposure"])
                 )
                 rec.add("pattern_detection", f"{persona}/s{seed}/q{qi}", ok,
                         {"top": top and [top["exposure"], top["lag_days"]], "expected": truth})
@@ -121,12 +152,14 @@ def suite_null(llm, rec: Recorder, cases: dict) -> None:
     for seed, entries in load_histories("null").items():
         for qi, q in enumerate(c["questions"]):
             agent = fresh_agent(llm, entries)
-            r = rec.agent_run(agent, "u", q)
-            res = tool_result(r, "find_flare_precursors") or {}
-            claimed = res.get("status") == "pattern_found" or "what tends to come before" in r.answer.lower()
+            r = rec.agent_run(agent, "u", q, expect_tools=SCAN_TOOLS)
+            res = tool_result(r, "find_flare_precursors") or tool_result(r, "test_association") or {}
+            mock = isinstance(llm, MockLLM)
+            claimed = res.get("status") == "pattern_found" or (mock and "what tends to come before" in r.answer.lower())
             said_none = "don't see a reliable pattern" in r.answer.lower() or "no clear" in r.answer.lower()
-            # with a real LLM the wording varies; the tool status is the primary signal
-            ok = not claimed and (said_none or not isinstance(llm, MockLLM))
+            # with a real LLM the wording varies; the tool status is the signal here, and the answer itself is
+            # judged in the agent-vs-direct comparison (evals/baseline.py)
+            ok = not claimed and (said_none or not mock)
             rec.add("null_no_false_pattern", f"null/s{seed}/q{qi}", ok, {"status": res.get("status")})
 
 
@@ -134,7 +167,7 @@ def suite_intervention(llm, rec: Recorder, cases: dict) -> None:
     for case in cases["intervention"]["cases"]:
         for seed, entries in load_histories(case["persona"]).items():
             agent = fresh_agent(llm, entries)
-            r = rec.agent_run(agent, "u", case["question"])
+            r = rec.agent_run(agent, "u", case["question"], expect_tools=("compare_before_after",))
             res = tool_result(r, "compare_before_after") or {}
             ok = res.get("verdict") == case["expect_verdict"]
             rec.add("intervention", f"{case['persona']}/s{seed}", ok,
@@ -217,6 +250,31 @@ def suite_grounding_guard(rec: Recorder) -> None:
     # 4) invented date
     r = fresh_agent(ScriptedLLM("Your worst crash was on 2025-12-25.", calls), entries).run("u", "patterns?")
     rec.add("groundedness_guard", "hallucinated_date_replaced", r.grounded and "2025-12-25" not in r.answer)
+    # 5) slots: the model writes placeholders, the harness fills values and records each binding
+    slot = "A flare followed {{T1.findings.0.rate_exposed_pct}}% of {{T1.findings.0.label}} days."
+    r = fresh_agent(ScriptedLLM(slot, calls), entries).run("u", "patterns?")
+    want = f"{res['findings'][0]['rate_exposed_pct']:g}%"
+    rec.add("groundedness_guard", "slot_filled_and_bound",
+            r.grounded and not r.safety_flags and want in r.answer and "{{" not in r.answer
+            and r.bindings and r.bindings[0]["path"] == "findings.0.rate_exposed_pct")
+    # 6) a slot pointing at a field that doesn't exist is caught like an invented number
+    r = fresh_agent(ScriptedLLM("Flares follow {{T1.findings.7.rate_exposed_pct}}% of days.", calls), entries).run(
+        "u", "patterns?")
+    rec.add("groundedness_guard", "bad_slot_replaced",
+            r.grounded and "replaced_with_deterministic_rendering" in r.safety_flags and "{{" not in r.answer)
+    # 7) laundering: a raw log value (e.g. a severity) passed off as a statistic. The old checker accepted any
+    #    number found anywhere in a tool output; raw rows are now excluded from the literal pool.
+    raw_calls = calls + [ToolCall(id="c2", name="get_entries", arguments={})]
+    stats_pool = grounding.source_numbers([res, analysis.get_entries(entries)])
+    raw_vals = sorted({v for e in analysis.get_entries(entries)["entries"] for v in e.get("symptoms", {}).values()}
+                      | {e["sleep_hours"] for e in analysis.get_entries(entries)["entries"] if "sleep_hours" in e})
+    laundered = next((v for v in raw_vals if not grounding._matches(f"{v:g}", stats_pool)), None)
+    if laundered is not None:
+        r = fresh_agent(ScriptedLLM(f"Flares followed {laundered:g}% of high-exertion days.", raw_calls),
+                        entries).run("u", "patterns?")
+        rec.add("groundedness_guard", "raw_value_laundering_caught",
+                "ungrounded_first_draft" in r.safety_flags and "high-exertion days." not in r.answer,
+                {"laundered_value": laundered})
 
 
 def suite_memory(llm, rec: Recorder) -> None:
@@ -364,7 +422,7 @@ def suite_extraction(llm, rec: Recorder, name: str, path: Path) -> dict:
 def suite_stats_power(seeds: range = range(100, 130)) -> dict:
     """Tool-only Monte Carlo on fresh seeds (not the fixture seeds): detection power and false-positive rate."""
     out = {}
-    for persona in ("pem", "sleep_headache", "wine_headache", "null"):
+    for persona in ("pem", "sleep_headache", "wine_headache", "null", "null_autocorr"):
         truth = TRUTH[persona]
         det = lag = fp = 0
         for s in seeds:
@@ -394,8 +452,56 @@ def _rate(rec: Recorder, suite: str) -> tuple[int, int]:
     return sum(c["passed"] for c in xs), len(xs)
 
 
-def run(check: bool = False) -> int:
-    llm = make_llm()
+def result_tag(llm: LLMClient, tag: str | None) -> str:
+    if tag:
+        return tag
+    if isinstance(llm, MockLLM):
+        return "latest"
+    return re.sub(r"[^A-Za-z0-9._-]+", "_", llm.name.split(":", 1)[-1]).strip("_") or "model"
+
+
+def harness_behavior(rec: Recorder) -> dict:
+    """How often the harness had to step in. Near zero by construction for the mock; the real-model signal."""
+    n = len(rec.flags)
+    count = lambda f: sum(1 for fl in rec.flags if f in fl)  # noqa: E731
+    return {
+        "agent_runs": n,
+        "first_draft_ungrounded": count("ungrounded_first_draft"),
+        "repaired_after_one_turn": count("ungrounded_first_draft") - count("replaced_with_deterministic_rendering"),
+        "replaced_with_deterministic_rendering": count("replaced_with_deterministic_rendering"),
+        "blocked_unsafe_output": count("blocked_unsafe_output"),
+        "step_budget_exhausted": count("step_budget_exhausted"),
+        "tool_calls": rec.tool_calls,
+        "tool_errors": rec.tool_errors,
+        "right_tool_chosen": f"{sum(rec.tool_choice)}/{len(rec.tool_choice)}",
+    }
+
+
+def write_baseline(llm: LLMClient, tag: str, quick: bool = False) -> dict:
+    from evals import baseline
+
+    global SEED_LIMIT
+    old, SEED_LIMIT = SEED_LIMIT, (2 if quick else SEED_LIMIT)
+    try:
+        cases = json.loads((HERE / "cases.json").read_text())
+        out = baseline.run_baseline(llm, load_histories, fresh_agent, cases)
+    finally:
+        SEED_LIMIT = old
+    out = {"generated_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"), "llm": llm.name, **out}
+    RESULTS.mkdir(exist_ok=True)
+    (RESULTS / f"baseline_{tag}.json").write_text(json.dumps(out, indent=2, default=str))
+    md = baseline.to_markdown(llm.name, out["summary"])
+    (RESULTS / f"baseline_{tag}.md").write_text(md)
+    print(md)
+    return out
+
+
+def run(check: bool = False, llm: LLMClient | None = None, tag: str | None = None, quick: bool = False,
+        with_baseline: bool = False) -> int:
+    global SEED_LIMIT
+    llm = llm or make_llm()
+    tag = result_tag(llm, tag)
+    SEED_LIMIT = 2 if quick else None
     cases = json.loads((HERE / "cases.json").read_text())
     rec = Recorder()
     t0 = time.perf_counter()
@@ -453,13 +559,20 @@ def run(check: bool = False) -> int:
         "gates": {k: {"threshold": GATES[k], "passed": v} for k, v in gate_results.items()},
         "red_flag_false_alarms": {"n_benign_texts": len(benign), "false_alarms": len(false_alarms),
                                   "examples": false_alarms[:3]},
+        "harness_behavior": harness_behavior(rec),
+        "quick": quick,
         "failures": [c for c in rec.cases if not c["passed"]],
     }
     RESULTS.mkdir(exist_ok=True)
-    (RESULTS / "latest.json").write_text(json.dumps(report, indent=2, default=str))
+    (RESULTS / f"{tag}.json").write_text(json.dumps(report, indent=2, default=str))
     md = to_markdown(report)
-    (RESULTS / "latest.md").write_text(md)
+    (RESULTS / f"{tag}.md").write_text(md)
     print(md)
+    if with_baseline:
+        if isinstance(llm, MockLLM):
+            print("(skipping --baseline: the direct-ask arm needs a real model)", file=sys.stderr)
+        else:
+            write_baseline(llm, tag, quick=quick)
     if check and not all(gate_results.values()):
         print("GATE FAILURE:", [k for k, v in gate_results.items() if not v], file=sys.stderr)
         return 1
@@ -480,7 +593,8 @@ def to_markdown(r: dict) -> str:
         ("Extraction, dev set (field accuracy; Passed = all 5 fields right)", "extraction_dev"),
         ("Extraction, held-out set (field accuracy; Passed = all 5 fields right)", "extraction_heldout"),
     ]
-    out = [f"Eval run {r['generated_at']} - LLM backend: `{r['llm']}`", "",
+    quick = " (quick: 2 seeds per persona)" if r.get("quick") else ""
+    out = [f"Eval run {r['generated_at']} - LLM backend: `{r['llm']}`{quick}", "",
            "| Suite | Passed | Score | Gate |", "|---|---|---|---|"]
     for label, k in rows:
         v = s[k]
@@ -495,11 +609,18 @@ def to_markdown(r: dict) -> str:
         out.append(f"{k}: n={e['n']}, per-field {e['per_field']}, foods F1 {e['foods_f1']}, meds F1 {e['meds_f1']}")
     out += ["", "Statistical engine on 30 fresh seeds per persona (tools only, no LLM):", "",
             "| Persona | Detected | Correct lag | Any false finding |", "|---|---|---|---|"]
-    for persona in ("pem", "sleep_headache", "wine_headache", "null"):
+    for persona in ("pem", "sleep_headache", "wine_headache", "null", "null_autocorr"):
         v = pw[persona]
         out.append(f"| {persona} | {v.get('detected', '-')} | {v.get('correct_lag', '-')} | {v['any_false_finding']} |")
     out.append(f"\nBefore/after correct verdict: magnesium_effect {pw['magnesium_effect']['correct_verdict']}, "
                f"vitd_null {pw['vitd_null']['correct_verdict']} (n=30 each).")
+    hb = r.get("harness_behavior")
+    if hb:
+        out += ["", f"Harness interventions over {hb['agent_runs']} agent runs: first draft ungrounded "
+                f"{hb['first_draft_ungrounded']} (repaired in one turn {hb['repaired_after_one_turn']}, replaced by "
+                f"deterministic rendering {hb['replaced_with_deterministic_rendering']}), unsafe output blocked "
+                f"{hb['blocked_unsafe_output']}, step budget exhausted {hb['step_budget_exhausted']}, tool errors "
+                f"{hb['tool_errors']}/{hb['tool_calls']} calls, right tool chosen {hb['right_tool_chosen']}."]
     tok = "estimated (chars/4)" if p["tokens_estimated"] else "reported by API"
     out += ["", f"Perf: {p['agent_runs']} agent runs, latency p50 {p['latency_ms_p50']} ms / p95 {p['latency_ms_p95']} ms, "
             f"{p['llm_calls_per_run_mean']} LLM calls per run, tokens in/out {p['tokens_in']}/{p['tokens_out']} ({tok}), "
@@ -512,5 +633,8 @@ def to_markdown(r: dict) -> str:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--check", action="store_true", help="exit non-zero if a gate fails")
+    ap.add_argument("--quick", action="store_true", help="2 seeds per persona (cheap run against a paid model)")
+    ap.add_argument("--baseline", action="store_true", help="also run the agent-vs-direct-ask comparison")
+    ap.add_argument("--tag", help="results file name (default: latest for mock, else the model name)")
     args = ap.parse_args()
-    sys.exit(run(check=args.check))
+    sys.exit(run(check=args.check, tag=args.tag, quick=args.quick, with_baseline=args.baseline))

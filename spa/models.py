@@ -152,3 +152,4 @@ class AgentResult(BaseModel):
     usage: Usage = Field(default_factory=Usage)
     latency_ms: float = 0.0
     run_id: Optional[int] = None
+    bindings: list[dict[str, Any]] = Field(default_factory=list)  # slot -> tool field each number came from

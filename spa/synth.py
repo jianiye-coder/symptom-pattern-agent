@@ -16,6 +16,8 @@ PERSONAS = {
     "sleep_headache": "Headache flares on the same day as a short (<6h) night of sleep.",
     "wine_headache": "Headache flares the day after red wine.",
     "null": "No planted pattern; flares are random.",
+    "null_autocorr": "No planted pattern, but runs: busy spells of several days and multi-day crash episodes, "
+                     "independent of each other. Tests that treat days as independent over-find patterns here.",
     "magnesium_effect": "Started magnesium mid-way; fatigue drops by ~2 points afterwards.",
     "vitd_null": "Started vitamin D mid-way; no change in symptoms.",
     "sparse": "Only 9 logged days: not enough data to say anything.",
@@ -28,6 +30,7 @@ TRUTH: dict[str, dict[str, Any]] = {
     "sleep_headache": {"exposure": "short_sleep", "lags": [[0, 0]]},
     "wine_headache": {"exposure": "food:red wine", "lags": [[1, 1]]},
     "null": {"exposure": None},
+    "null_autocorr": {"exposure": None},
     "magnesium_effect": {"intervention": "magnesium", "verdict": "lower_after"},
     "vitd_null": {"intervention": "vitamin d", "verdict": "no_clear_change"},
     "sparse": {"insufficient": True},
@@ -57,6 +60,26 @@ def generate(persona: str, seed: int = 0, days: int = 70, start: dt.date = dt.da
                 sleep[i] = rng.choice([4.0, 4.5, 5.0, 5.5])
     wine = [rng.random() < 0.15 for _ in range(days)]
     switch = days // 2
+    episode = [False] * days
+    if persona == "null_autocorr":  # separate stream so the other personas' draws are unchanged
+        r2 = random.Random(f"{persona}:{seed}:runs")
+        exertion = [r2.choice([1, 2, 3, 3, 4, 5]) for _ in range(days)]
+        i = 0
+        while i < days:  # busy spells: 3-6 consecutive high-exertion days
+            if r2.random() < 0.06:
+                for j in range(i, min(days, i + r2.randint(3, 6))):
+                    exertion[j] = r2.randint(7, 9)
+                i += 7
+            else:
+                i += 1
+        i = 0
+        while i < days:  # crash episodes: 3-5 consecutive flare days, independent of exertion
+            if r2.random() < 0.05:
+                for j in range(i, min(days, i + r2.randint(3, 5))):
+                    episode[j] = True
+                i += 6
+            else:
+                i += 1
     entries: list[Entry] = []
     for i in range(days):
         fatigue = rng.gauss(3.6, 1.0)
@@ -69,6 +92,8 @@ def generate(persona: str, seed: int = 0, days: int = 70, start: dt.date = dt.da
                 fatigue += rng.uniform(3.5, 5)
             else:
                 headache += rng.uniform(4.5, 6)
+        if episode[i]:
+            fatigue += rng.uniform(4, 5)
         if persona == "pem":
             for lag in (1, 2):
                 j = i - lag

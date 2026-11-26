@@ -3,70 +3,106 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Symptom Pattern Agent</title>
-  <link rel="stylesheet" href="/static/style.css" />
+  <title>Symptom Notebook</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css?v=6" />
 </head>
 <body>
-  <header>
-    <div>
-      <h1>Symptom Pattern Agent</h1>
-      <p class="sub">Finds patterns in <em>your own</em> log. Numbers come from code, not the model.</p>
+  <header class="masthead">
+    <div class="title">
+      <p class="kicker">Personal record · <span id="today-label"></span></p>
+      <h1>Symptom Notebook</h1>
+      <p class="dek">A record of your days, read by statistics rather than guesswork.</p>
     </div>
-    <div class="demo">
-      <label for="persona">Synthetic demo user</label>
-      <select id="persona"></select>
-      <button id="load" class="ghost">Load</button>
-      <span id="mode" class="pill"></span>
-    </div>
+    <nav class="tools">
+      <label class="diary">Demo diary
+        <select id="persona" aria-label="Synthetic demo diary"></select>
+      </label>
+      <button id="load" class="text-btn">Open</button>
+      <a id="report-link" class="report-link" href="/report?user=demo" target="_blank" rel="noopener">Visit report <span aria-hidden="true">↗</span></a>
+    </nav>
   </header>
-  <div class="disclaimer">Not medical advice. Demo uses synthetic data only. If you have urgent symptoms, contact emergency services.</div>
 
-  <main>
-    <section class="card" id="log-card">
-      <h2>Log today</h2>
-      <textarea id="log-text" rows="5" placeholder="e.g. fatigue 7/10, brain fog 5. slept 5.5 hours. busy day, lots of walking. coffee, pasta. took magnesium."></textarea>
-      <div class="row">
-        <input type="date" id="log-date" />
-        <button id="log-btn">Parse &amp; save</button>
-      </div>
-      <div id="log-result" class="muted small"></div>
+  <main class="page">
+    <div class="col-record">
+      <section class="entry" aria-labelledby="h-today">
+        <div class="section-head">
+          <h2 id="h-today">Today</h2>
+          <input type="date" id="log-date" aria-label="Entry date" />
+        </div>
+        <p class="long-date" id="long-date"></p>
+        <textarea id="log-text" rows="4" placeholder="Write it the way you'd say it: fatigue 7, brain fog 5. Slept 5½ hours. Long walk to the pharmacy. Coffee, pasta. Took magnesium."></textarea>
+        <div class="entry-actions">
+          <button id="log-btn" class="ink-btn">Add to record</button>
+          <span id="log-result" class="log-result"></span>
+        </div>
+        <div id="progress" class="progress"></div>
+      </section>
 
-      <h2 class="mt">Memory <span class="muted small">facts about you</span></h2>
-      <ul id="facts" class="facts"></ul>
-      <details class="small">
-        <summary>Memory history</summary>
-        <ul id="events" class="events"></ul>
-      </details>
-    </section>
+      <section class="record" aria-labelledby="h-record">
+        <div class="section-head">
+          <h2 id="h-record">The record</h2>
+          <span id="chart-sub" class="caption"></span>
+        </div>
+        <figure>
+          <div id="chart"></div>
+          <figcaption class="legend">
+            <span><i class="k-line"></i>worst symptom, 0–10</span>
+            <span><i class="k-dot"></i>flare day</span>
+            <span><i class="k-bar"></i>exertion</span>
+            <span><i class="k-flag"></i>flagged for doctor</span>
+            <span id="legend-exp" hidden><i class="k-exp"></i><span id="legend-exp-label"></span></span>
+          </figcaption>
+        </figure>
+        <p class="caption" id="chart-note">Click any day to flag it for your next appointment.</p>
 
-    <section class="card" id="chat-card">
-      <h2>Ask</h2>
-      <div id="suggestions" class="suggestions">
-        <button>What tends to come before my bad days?</button>
-        <button>For me a bad day is when brain fog is 6 or more</button>
-        <button>Did magnesium help my fatigue?</button>
-        <button>Does red wine trigger my headaches?</button>
-        <button>Should I stop taking my meds?</button>
-      </div>
-      <div id="messages" class="messages"></div>
-      <form id="chat-form" class="row">
-        <input id="chat-input" autocomplete="off" placeholder="Ask about your patterns..." />
-        <button type="submit">Send</button>
-      </form>
-    </section>
+        <div class="ledger-wrap">
+        <table class="ledger" aria-label="Daily log">
+          <thead>
+            <tr><th>Date</th><th class="num">Worst</th><th>Symptoms</th><th class="num">Sleep</th><th class="num">Exert.</th><th>Food &amp; meds</th><th class="flag-col"><span class="sr">Flag</span></th></tr>
+          </thead>
+          <tbody id="ledger"></tbody>
+        </table>
+        </div>
+      </section>
+    </div>
 
-    <section class="card" id="chart-card">
-      <h2>Timeline <span id="chart-sub" class="muted small"></span></h2>
-      <div id="chart"></div>
-      <div class="legend small">
-        <span><i class="sw line"></i>severity</span>
-        <span><i class="sw bar"></i>exertion</span>
-        <span><i class="sw flare"></i>flare day</span>
-        <span id="legend-exp" hidden><i class="sw exp"></i><b id="legend-exp-label"></b></span>
-      </div>
-      <p class="muted small" id="chart-note">Ask a pattern question to highlight what the agent found.</p>
-    </section>
+    <aside class="col-notes">
+      <section class="questions" aria-labelledby="h-q">
+        <h2 id="h-q">Questions</h2>
+        <div id="messages" class="transcript" aria-live="polite"></div>
+        <form id="chat-form" class="ask">
+          <label for="chat-input" class="sr">Ask about your record</label>
+          <input id="chat-input" autocomplete="off" placeholder="Ask about your record…" />
+          <button type="submit" class="text-btn">Ask</button>
+        </form>
+        <div id="suggestions" class="suggestions">
+          <span class="caption">Try asking</span>
+          <button>What tends to come before my bad days?</button>
+          <button>Did magnesium help my fatigue?</button>
+          <button>Does red wine trigger my headaches?</button>
+          <button>For me a bad day is when brain fog is 6 or more</button>
+          <button>Should I stop taking my meds?</button>
+        </div>
+      </section>
+
+      <section class="memory" aria-labelledby="h-mem">
+        <h2 id="h-mem">What the notebook remembers</h2>
+        <ol id="facts" class="facts"></ol>
+        <details class="history">
+          <summary>Change history</summary>
+          <ul id="events" class="events"></ul>
+        </details>
+      </section>
+    </aside>
   </main>
-  <script src="/static/app.js"></script>
+
+  <footer class="colophon">
+    <p>Not medical advice. This demo uses synthetic diaries only. If you have urgent symptoms, contact emergency services.</p>
+    <p>Every number shown is computed by code and checked before you see it. <span id="mode"></span></p>
+  </footer>
+  <script src="/static/app.js?v=5"></script>
 </body>
 </html>

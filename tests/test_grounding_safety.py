@@ -27,3 +27,28 @@ def test_med_decision_and_unsafe_output():
     assert safety.unsafe_spans("You have ME/CFS.")
     assert not safety.unsafe_spans("Since you started magnesium on 2026-02-01, fatigue was lower.")
     assert not safety.unsafe_spans(safety.MED_POLICY)
+
+
+def test_slots_fill_values_and_record_bindings():
+    refs = {"T1": {"findings": [{"rate_exposed_pct": 44.4, "risk_difference": 0.312, "label": "short sleep"}],
+                   "entries": [{"date": "2026-01-05", "symptoms": {"fatigue": 8}}]}}
+    g = grounding.check("{{T1.findings.0.label}}: {{T1.findings.0.rate_exposed_pct}}% "
+                        "({{ T1.findings.0.risk_difference | pct }} points); fatigue {{T1.entries.0.symptoms.fatigue}} "
+                        "on {{T1.entries.0.date}}", list(refs.values()), [], refs)
+    assert g["grounded"] and g["answer"] == "short sleep: 44.4% (31 points); fatigue 8 on 2026-01-05"
+    assert [b["path"] for b in g["bindings"]][:2] == ["findings.0.label", "findings.0.rate_exposed_pct"]
+
+
+def test_bad_slots_are_ungrounded():
+    refs = {"T1": {"findings": [{"label": "x", "evidence": []}]}}
+    for bad in ("{{T2.findings.0.label}}", "{{T1.findings.3.label}}", "{{T1.findings.0}}",
+                "{{T1.findings.0.evidence}}", "{{T1.findings.0.label|pct}}"):
+        g = grounding.check(f"value {bad}", list(refs.values()), [], refs)
+        assert not g["grounded"] and g["ungrounded_numbers"] == [bad], bad
+
+
+def test_raw_log_values_cannot_pass_as_literals():
+    out = {"rate_exposed_pct": 44.4, "entries": [{"date": "2026-01-05", "symptoms": {"fatigue": 8}}]}
+    assert grounding.check("44.4% of days", [out])["grounded"]
+    assert not grounding.check("8% of days", [out])["grounded"]  # 8 exists only in a raw row
+    assert grounding.check("{{T1.entries.0.symptoms.fatigue}} on 2026-01-05", [out], [], {"T1": out})["grounded"]

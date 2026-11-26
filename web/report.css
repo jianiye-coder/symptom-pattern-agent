@@ -1,0 +1,33 @@
+:root { --ink: #1d1c1a; --muted: #8a8378; --line: #d6cdbd; --accent: #1d1c1a; --flare: #b23a2b; --paper: #f4f0e8; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.55 "Newsreader", Georgia, serif; }
+.report { max-width: 860px; margin: 2rem auto; background: #fffdf8; border: 1px solid var(--line); padding: 2.4rem 2.8rem; box-shadow: 0 1px 0 var(--line), 0 18px 40px -28px rgba(29,28,26,0.35); }
+header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px double var(--ink); padding-bottom: 0.9rem; margin-bottom: 1rem; }
+h1 { font: 500 2rem/1 "Newsreader", Georgia, serif; letter-spacing: -0.015em; margin: 0; }
+h2 { font: 600 0.7rem/1 "Public Sans", sans-serif; text-transform: uppercase; letter-spacing: 0.16em; color: var(--ink); margin: 1.8rem 0 0.6rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--ink); }
+table, .grid, .meta, .small, footer, button { font-family: "Public Sans", sans-serif; }
+td, .grid dd { font-variant-numeric: tabular-nums; }
+h3 { font-size: 0.9rem; margin: 0.8rem 0 0.3rem; }
+.sub, .muted { color: var(--muted); }
+.sub { margin: 0.2rem 0 0; }
+.meta { text-align: right; font-size: 0.8rem; color: var(--muted); }
+.small { font-size: 0.8rem; }
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.8rem; margin: 0 0 0.8rem; }
+.grid dt { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.grid dd { margin: 0; font-weight: 600; }
+table { width: 100%; border-collapse: collapse; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-weight: 600; border-bottom: 1px solid var(--ink); padding: 0.3rem 0.4rem; }
+td { border-bottom: 1px solid var(--line); padding: 0.3rem 0.4rem; vertical-align: top; }
+section.alert { border-left: 4px solid var(--flare); padding-left: 0.9rem; }
+q { color: var(--muted); }
+footer { margin-top: 1.8rem; padding-top: 0.8rem; border-top: 1px solid var(--line); font-size: 0.78rem; }
+button { font-size: 0.8rem; font-weight: 600; border: 0; padding: 0.4rem 0.75rem; background: var(--ink); color: var(--paper); cursor: pointer; margin-top: 0.4rem; }
+button:hover { background: var(--flare); }
+.sub { font-style: italic; }
+@media (max-width: 700px) { .grid { grid-template-columns: repeat(2, 1fr); } .report { padding: 1.2rem; } }
+@media print {
+  body { background: #fff; }
+  .report { border: 0; margin: 0; max-width: none; padding: 0; }
+  .noprint { display: none; }
+  section, tr { break-inside: avoid; }
+}

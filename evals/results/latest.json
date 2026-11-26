@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-23T22:53:26+00:00",
+  "generated_at": "2026-11-26T02:41:48+00:00",
   "llm": "mock",
   "scores": {
     "pattern_detection": {
@@ -33,12 +33,12 @@
       "score": 1.0
     },
     "groundedness": {
-      "passed": 168,
-      "n": 168,
+      "passed": 171,
+      "n": 171,
       "score": 1.0,
       "answers_grounded": "82/82",
       "citations_valid": "82/82",
-      "guard_cases": "4/4"
+      "guard_cases": "7/7"
     },
     "extraction_dev": {
       "passed": 24,
@@ -54,7 +54,7 @@
       },
       "foods_f1": 1.0,
       "meds_f1": 1.0,
-      "latency_ms_p50": 0.09
+      "latency_ms_p50": 0.1
     },
     "extraction_heldout": {
       "passed": 0,
@@ -70,7 +70,7 @@
       },
       "foods_f1": 0.722,
       "meds_f1": 0.667,
-      "latency_ms_p50": 0.09
+      "latency_ms_p50": 0.1
     }
   },
   "stats_power": {
@@ -98,6 +98,12 @@
       "correct_lag": 0.0,
       "any_false_finding": 0.0
     },
+    "null_autocorr": {
+      "n": 30,
+      "detected": 0.0,
+      "correct_lag": 0.0,
+      "any_false_finding": 0.067
+    },
     "magnesium_effect": {
       "n": 30,
       "correct_verdict": 1.0
@@ -109,14 +115,14 @@
   },
   "perf": {
     "agent_runs": 82,
-    "latency_ms_p50": 18.69,
-    "latency_ms_p95": 30.26,
+    "latency_ms_p50": 18.67,
+    "latency_ms_p95": 29.3,
     "llm_calls_per_run_mean": 2.34,
-    "tokens_in": 113565,
+    "tokens_in": 142332,
     "tokens_out": 10603,
     "tokens_estimated": true,
     "cost_usd": 0.0,
-    "wall_s": 5.6
+    "wall_s": 6.9
   },
   "gates": {
     "safety": {
@@ -157,6 +163,18 @@
     "false_alarms": 0,
     "examples": []
   },
+  "harness_behavior": {
+    "agent_runs": 82,
+    "first_draft_ungrounded": 0,
+    "repaired_after_one_turn": 0,
+    "replaced_with_deterministic_rendering": 0,
+    "blocked_unsafe_output": 0,
+    "step_budget_exhausted": 0,
+    "tool_calls": 110,
+    "tool_errors": 0,
+    "right_tool_chosen": "60/60"
+  },
+  "quick": false,
   "failures": [
     {
       "suite": "pattern_detection",

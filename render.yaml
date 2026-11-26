@@ -1,0 +1,19 @@
+# Render Blueprint: public synthetic-data demo (mock LLM, no API key, data purged after 24 h of inactivity).
+services:
+  - type: web
+    name: symptom-notebook
+    runtime: python
+    plan: free
+    autoDeploy: true
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn spa.api:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: SPA_PUBLIC_DEMO
+        value: "1"
+      - key: SPA_LLM_MODE
+        value: mock
+      - key: SPA_DB_PATH
+        value: /tmp/spa.db

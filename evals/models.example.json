@@ -1,0 +1,8 @@
+[
+  {"tag": "gpt-4o-mini", "model": "gpt-4o-mini", "base_url": "https://api.openai.com/v1",
+   "api_key_env": "OPENAI_API_KEY", "price_in_per_mtok": 0.15, "price_out_per_mtok": 0.6},
+  {"tag": "claude-haiku-5-5", "model": "claude-haiku-5-5", "base_url": "https://api.anthropic.com/v1",
+   "api_key_env": "ANTHROPIC_API_KEY"},
+  {"tag": "llama3.1-8b-local", "model": "llama3.1:8b", "base_url": "http://localhost:11434/v1",
+   "api_key_env": "OLLAMA_API_KEY"}
+]

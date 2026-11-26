@@ -86,3 +86,37 @@ def test_single_exposure_test_uses_full_scan_correction():
 
 def test_before_after_requires_exact_name():
     assert analysis.compare_before_after(generate("vitd_null", 0), "vitamin")["status"] == "not_found"
+
+
+def test_bh_adjustment_known_values():
+    assert [round(x, 4) for x in analysis._bh([0.01, 0.04, 0.03, 0.2])] == [0.04, 0.0533, 0.0533, 0.2]
+
+
+def test_fast_fisher_matches_exact():
+    for t in [(5, 2, 3, 20), (0, 5, 5, 5), (7, 0, 0, 7), (3, 10, 8, 40)]:
+        assert abs(analysis._fisher_fast(*t) - analysis.fisher_one_sided(*t)) < 1e-12
+
+
+def test_all_methods_find_planted_pattern_and_report_method():
+    es = generate("pem", 0)
+    for m in analysis.METHODS:
+        r = analysis.find_flare_precursors(es, method=m)
+        assert r["correction"] == m and r["findings"][0]["exposure"] == "high_exertion", m
+    r = analysis.find_flare_precursors(es, method="maxt")
+    assert r["permutation_rotations"] > 40
+    assert r["findings"][0]["p_adjusted"] == float(f"{1 / (r['permutation_rotations'] + 1):.2g}")  # floor
+
+
+def test_maxt_cannot_reach_significance_on_short_logs():
+    es = generate("pem", 0, days=25)
+    r = analysis.find_flare_precursors(es, method="maxt")
+    assert r["status"] != "pattern_found" and any("too few" in w for w in r["warnings"])
+
+
+def test_single_exposure_test_is_adjusted_for_full_scan_under_every_method():
+    es = generate("pem", 1)
+    for m in analysis.METHODS:
+        full = analysis.find_flare_precursors(es, method=m)
+        one = analysis.test_association(es, "exercise", method=m)
+        f = next(x for x in full["findings"] if x["exposure"] == "high_exertion")
+        assert one["findings"][0]["p_adjusted"] == f["p_adjusted"], m

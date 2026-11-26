@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 944 310" width="944" height="310" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" role="img" aria-label="Detection rate versus days logged, by persona and correction method">
+<rect width="944" height="310" fill="#fcfcfb"/>
+<text x="44" y="20" font-size="14" font-weight="600" fill="#0b0b0b">How many days of logging before a planted pattern is found</text>
+<line x1="44" y1="36" x2="62" y2="36" stroke="#2a78d6" stroke-width="2"/><circle cx="53" cy="36" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/><text x="68" y="40" font-size="12" fill="#52514e">Bonferroni</text>
+<line x1="234" y1="36" x2="252" y2="36" stroke="#eb6834" stroke-width="2"/><circle cx="243" cy="36" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/><text x="258" y="40" font-size="12" fill="#52514e">Circular-shift maxT</text>
+<g transform="translate(44,84)">
+<line x1="0" y1="170.0" x2="270" y2="170.0" stroke="#e4e3df" stroke-width="1"/>
+<text x="-8" y="174.0" font-size="11" fill="#52514e" text-anchor="end">0%</text>
+<line x1="0" y1="127.5" x2="270" y2="127.5" stroke="#e4e3df" stroke-width="1"/>
+<text x="-8" y="131.5" font-size="11" fill="#52514e" text-anchor="end">25%</text>
+<line x1="0" y1="85.0" x2="270" y2="85.0" stroke="#e4e3df" stroke-width="1"/>
+<text x="-8" y="89.0" font-size="11" fill="#52514e" text-anchor="end">50%</text>
+<line x1="0" y1="42.5" x2="270" y2="42.5" stroke="#e4e3df" stroke-width="1"/>
+<text x="-8" y="46.5" font-size="11" fill="#52514e" text-anchor="end">75%</text>
+<line x1="0" y1="0.0" x2="270" y2="0.0" stroke="#e4e3df" stroke-width="1"/>
+<text x="-8" y="4.0" font-size="11" fill="#52514e" text-anchor="end">100%</text>
+<text x="0.0" y="186" font-size="11" fill="#52514e" text-anchor="middle">21</text>
+<text x="24.5" y="186" font-size="11" fill="#52514e" text-anchor="middle">30</text>
+<text x="65.5" y="186" font-size="11" fill="#52514e" text-anchor="middle">45</text>
+<text x="106.4" y="186" font-size="11" fill="#52514e" text-anchor="middle">60</text>
+<text x="188.2" y="186" font-size="11" fill="#52514e" text-anchor="middle">90</text>
+<text x="270.0" y="186" font-size="11" fill="#52514e" text-anchor="middle">120</text>
+<text x="135.0" y="204" font-size="11" fill="#52514e" text-anchor="middle">days logged</text>
+<text x="0" y="-14" font-size="12" font-weight="600" fill="#0b0b0b">pem</text>
+<polyline fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round" points="0.0,149.6 24.5,112.2 65.5,54.4 106.4,22.1 188.2,1.7 270.0,0.0"/>
+<circle cx="0.0" cy="149.6" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>pem, Bonferroni, 21 days: 12%</title></circle>
+<circle cx="24.5" cy="112.2" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>pem, Bonferroni, 30 days: 34%</title></circle>
+<circle cx="65.5" cy="54.4" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>pem, Bonferroni, 45 days: 68%</title></circle>
+<circle cx="106.4" cy="22.1" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>pem, Bonferroni, 60 days: 87%</title></circle>
+<circle cx="188.2" cy="1.7" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>pem, Bonferroni, 90 days: 99%</title></circle>
+<circle cx="270.0" cy="0.0" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>pem, Bonferroni, 120 days: 100%</title></circle>
+<polyline fill="none" stroke="#eb6834" stroke-width="2" stroke-linejoin="round" points="0.0,170.0 24.5,170.0 65.5,59.5 106.4,15.3 188.2,1.7 270.0,0.0"/>
+<circle cx="0.0" cy="170.0" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>pem, Circular-shift maxT, 21 days: 0%</title></circle>
+<circle cx="24.5" cy="170.0" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>pem, Circular-shift maxT, 30 days: 0%</title></circle>
+<circle cx="65.5" cy="59.5" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>pem, Circular-shift maxT, 45 days: 65%</title></circle>
+<circle cx="106.4" cy="15.3" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>pem, Circular-shift maxT, 60 days: 91%</title></circle>
+<circle cx="188.2" cy="1.7" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>pem, Circular-shift maxT, 90 days: 99%</title></circle>
+<circle cx="270.0" cy="0.0" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>pem, Circular-shift maxT, 120 days: 100%</title></circle>
+<text x="34.5" y="128.2" font-size="11" fill="#52514e">Bonferroni</text>
+<text x="34.5" y="162.0" font-size="11" fill="#52514e">maxT: no result can reach p &lt; 0.05 yet</text>
+</g>
+<g transform="translate(344,84)">
+<line x1="0" y1="170.0" x2="270" y2="170.0" stroke="#e4e3df" stroke-width="1"/>
+<line x1="0" y1="127.5" x2="270" y2="127.5" stroke="#e4e3df" stroke-width="1"/>
+<line x1="0" y1="85.0" x2="270" y2="85.0" stroke="#e4e3df" stroke-width="1"/>
+<line x1="0" y1="42.5" x2="270" y2="42.5" stroke="#e4e3df" stroke-width="1"/>
+<line x1="0" y1="0.0" x2="270" y2="0.0" stroke="#e4e3df" stroke-width="1"/>
+<text x="0.0" y="186" font-size="11" fill="#52514e" text-anchor="middle">21</text>
+<text x="24.5" y="186" font-size="11" fill="#52514e" text-anchor="middle">30</text>
+<text x="65.5" y="186" font-size="11" fill="#52514e" text-anchor="middle">45</text>
+<text x="106.4" y="186" font-size="11" fill="#52514e" text-anchor="middle">60</text>
+<text x="188.2" y="186" font-size="11" fill="#52514e" text-anchor="middle">90</text>
+<text x="270.0" y="186" font-size="11" fill="#52514e" text-anchor="middle">120</text>
+<text x="135.0" y="204" font-size="11" fill="#52514e" text-anchor="middle">days logged</text>
+<text x="0" y="-14" font-size="12" font-weight="600" fill="#0b0b0b">sleep headache</text>
+<polyline fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round" points="0.0,154.7 24.5,119.0 65.5,44.2 106.4,32.3 188.2,3.4 270.0,0.0"/>
+<circle cx="0.0" cy="154.7" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>sleep_headache, Bonferroni, 21 days: 9%</title></circle>
+<circle cx="24.5" cy="119.0" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>sleep_headache, Bonferroni, 30 days: 30%</title></circle>
+<circle cx="65.5" cy="44.2" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>sleep_headache, Bonferroni, 45 days: 74%</title></circle>
+<circle cx="106.4" cy="32.3" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>sleep_headache, Bonferroni, 60 days: 81%</title></circle>
+<circle cx="188.2" cy="3.4" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>sleep_headache, Bonferroni, 90 days: 98%</title></circle>
+<circle cx="270.0" cy="0.0" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>sleep_headache, Bonferroni, 120 days: 100%</title></circle>
+<polyline fill="none" stroke="#eb6834" stroke-width="2" stroke-linejoin="round" points="0.0,170.0 24.5,170.0 65.5,59.5 106.4,20.4 188.2,1.7 270.0,0.0"/>
+<circle cx="0.0" cy="170.0" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>sleep_headache, Circular-shift maxT, 21 days: 0%</title></circle>
+<circle cx="24.5" cy="170.0" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>sleep_headache, Circular-shift maxT, 30 days: 0%</title></circle>
+<circle cx="65.5" cy="59.5" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>sleep_headache, Circular-shift maxT, 45 days: 65%</title></circle>
+<circle cx="106.4" cy="20.4" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>sleep_headache, Circular-shift maxT, 60 days: 88%</title></circle>
+<circle cx="188.2" cy="1.7" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>sleep_headache, Circular-shift maxT, 90 days: 99%</title></circle>
+<circle cx="270.0" cy="0.0" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>sleep_headache, Circular-shift maxT, 120 days: 100%</title></circle>
+</g>
+<g transform="translate(644,84)">
+<line x1="0" y1="170.0" x2="270" y2="170.0" stroke="#e4e3df" stroke-width="1"/>
+<line x1="0" y1="127.5" x2="270" y2="127.5" stroke="#e4e3df" stroke-width="1"/>
+<line x1="0" y1="85.0" x2="270" y2="85.0" stroke="#e4e3df" stroke-width="1"/>
+<line x1="0" y1="42.5" x2="270" y2="42.5" stroke="#e4e3df" stroke-width="1"/>
+<line x1="0" y1="0.0" x2="270" y2="0.0" stroke="#e4e3df" stroke-width="1"/>
+<text x="0.0" y="186" font-size="11" fill="#52514e" text-anchor="middle">21</text>
+<text x="24.5" y="186" font-size="11" fill="#52514e" text-anchor="middle">30</text>
+<text x="65.5" y="186" font-size="11" fill="#52514e" text-anchor="middle">45</text>
+<text x="106.4" y="186" font-size="11" fill="#52514e" text-anchor="middle">60</text>
+<text x="188.2" y="186" font-size="11" fill="#52514e" text-anchor="middle">90</text>
+<text x="270.0" y="186" font-size="11" fill="#52514e" text-anchor="middle">120</text>
+<text x="135.0" y="204" font-size="11" fill="#52514e" text-anchor="middle">days logged</text>
+<text x="0" y="-14" font-size="12" font-weight="600" fill="#0b0b0b">wine headache</text>
+<polyline fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round" points="0.0,159.8 24.5,142.8 65.5,103.7 106.4,57.8 188.2,11.9 270.0,1.7"/>
+<circle cx="0.0" cy="159.8" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>wine_headache, Bonferroni, 21 days: 6%</title></circle>
+<circle cx="24.5" cy="142.8" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>wine_headache, Bonferroni, 30 days: 16%</title></circle>
+<circle cx="65.5" cy="103.7" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>wine_headache, Bonferroni, 45 days: 39%</title></circle>
+<circle cx="106.4" cy="57.8" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>wine_headache, Bonferroni, 60 days: 66%</title></circle>
+<circle cx="188.2" cy="11.9" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>wine_headache, Bonferroni, 90 days: 93%</title></circle>
+<circle cx="270.0" cy="1.7" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>wine_headache, Bonferroni, 120 days: 99%</title></circle>
+<polyline fill="none" stroke="#eb6834" stroke-width="2" stroke-linejoin="round" points="0.0,170.0 24.5,170.0 65.5,103.7 106.4,51.0 188.2,11.9 270.0,1.7"/>
+<circle cx="0.0" cy="170.0" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>wine_headache, Circular-shift maxT, 21 days: 0%</title></circle>
+<circle cx="24.5" cy="170.0" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>wine_headache, Circular-shift maxT, 30 days: 0%</title></circle>
+<circle cx="65.5" cy="103.7" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>wine_headache, Circular-shift maxT, 45 days: 39%</title></circle>
+<circle cx="106.4" cy="51.0" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>wine_headache, Circular-shift maxT, 60 days: 70%</title></circle>
+<circle cx="188.2" cy="11.9" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>wine_headache, Circular-shift maxT, 90 days: 93%</title></circle>
+<circle cx="270.0" cy="1.7" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>wine_headache, Circular-shift maxT, 120 days: 99%</title></circle>
+</g>
+</svg>
